@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>RE:ACT</title>
+    <meta name="description" content="An offline-first space for emotional awareness and intentional action." />
+    <meta name="theme-color" content="#f5f1e8" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234f5f49'/%3E%3Ctext x='16' y='22' font-family='Georgia,serif' font-size='18' text-anchor='middle' fill='%23fbf8f1'%3ER:%3C/text%3E%3C/svg%3E" />
+    <!-- Apply the saved theme before first paint to avoid a light/dark flash.
+         Mirrors src/app/theme.js (interim localStorage key; moves to IndexedDB in Stage 3). -->
+    <script>
+      try {
+        var t = localStorage.getItem('react.theme');
+        var dark = t === 'dark' || (t !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+      } catch (e) {}
+    </script>
+    <link rel="stylesheet" href="./src/styles/tokens.css" />
+    <link rel="stylesheet" href="./src/styles/base.css" />
+    <link rel="stylesheet" href="./src/styles/layout.css" />
+    <link rel="stylesheet" href="./src/styles/components.css" />
+    <link rel="stylesheet" href="./src/styles/pages.css" />
+  </head>
+  <body>
+    <div id="app"></div>
+    <noscript>RE:ACT needs JavaScript to run. Everything stays on your device.</noscript>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>

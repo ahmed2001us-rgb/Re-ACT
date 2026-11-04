@@ -1,0 +1,10 @@
+{
+  "name": "react-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "RE:ACT — offline-first emotional awareness and intentional action.",
+  "type": "module",
+  "scripts": {},
+  "dependencies": {},
+  "devDependencies": {}
+}

@@ -1,0 +1,103 @@
+/* RE:ACT design tokens. Components never hard-code colors; themes only override these. */
+
+:root {
+  color-scheme: light;
+
+  /* Type: system stacks only, so nothing is fetched and everything works offline. */
+  --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --text-xs: 0.8125rem;
+  --text-sm: 0.9375rem;
+  --text-md: 1.0625rem;
+  --text-lg: 1.3125rem;
+  --text-xl: clamp(1.5rem, 1.25rem + 1vw, 1.875rem);
+  --text-2xl: clamp(1.875rem, 1.4rem + 2vw, 2.875rem);
+  --leading-body: 1.6;
+  --leading-tight: 1.2;
+
+  /* Spacing */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4.5rem;
+
+  /* Shape */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --border-w: 1px;
+
+  /* Layout */
+  --sidebar-w: 15.5rem;
+  --header-h: 3.75rem;
+  --bottomnav-h: 4.25rem;
+  --content-max: 64rem;
+
+  /* Motion */
+  --ease: cubic-bezier(0.2, 0.6, 0.2, 1);
+  --dur: 160ms;
+
+  /* Light theme: warm off-white, charcoal, muted sage and clay */
+  --bg: #f5f1e8;
+  --surface: #fbf8f1;
+  --surface-raised: #fffdf8;
+  --surface-sunken: #ece7db;
+  --text: #2b2b29;
+  --text-muted: #67645b;
+  --border: #ddd6c7;
+  --border-strong: #c4bcaa;
+
+  --accent: #6f8068;
+  --accent-strong: #4f5f49;
+  --accent-soft: #e2e8da;
+  --earth: #855d3f;
+  --earth-soft: #efe2d5;
+
+  --btn-primary-bg: #4f5f49;
+  --btn-primary-bg-hover: #43523e;
+  --btn-primary-text: #fbf8f1;
+
+  --tone-info: #5b7186;
+  --tone-success: #4f5f49;
+  --tone-caution: #98704f;
+
+  --focus: #3f5b8a;
+  --backdrop: rgba(32, 31, 27, 0.42);
+  --shadow: 0 1px 2px rgba(43, 43, 41, 0.05), 0 8px 24px rgba(43, 43, 41, 0.06);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #1a1b19;
+  --surface: #212320;
+  --surface-raised: #292b27;
+  --surface-sunken: #161715;
+  --text: #e9e5da;
+  --text-muted: #a7a396;
+  --border: #383a35;
+  --border-strong: #4d4f48;
+
+  --accent: #9db095;
+  --accent-strong: #b7c8af;
+  --accent-soft: #2c342a;
+  --earth: #cba17f;
+  --earth-soft: #33291f;
+
+  --btn-primary-bg: #a9bca1;
+  --btn-primary-bg-hover: #b9cab2;
+  --btn-primary-text: #1a1b19;
+
+  --tone-info: #8fa8bf;
+  --tone-success: #a9bca1;
+  --tone-caution: #cba17f;
+
+  --focus: #8fb0e6;
+  --backdrop: rgba(0, 0, 0, 0.6);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.28);
+}

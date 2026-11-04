@@ -1,0 +1,262 @@
+/* Application shell: sidebar (desktop), icon rail (tablet), bottom nav (mobile). */
+
+.ra-app {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+  min-height: 100dvh;
+}
+
+.ra-main-wrap {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ra-main {
+  flex: 1;
+  width: 100%;
+  max-width: var(--content-max);
+  margin-inline: auto;
+  padding: var(--space-6) var(--space-6) var(--space-8);
+}
+
+.ra-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.ra-page__intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-width: 40rem;
+}
+
+.ra-page__lede {
+  color: var(--text-muted);
+}
+
+/* Sidebar */
+.ra-sidebar {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  padding: var(--space-5) var(--space-4);
+  background: var(--surface);
+  border-right: var(--border-w) solid var(--border);
+}
+
+.ra-brand {
+  display: inline-flex;
+  align-items: baseline;
+  padding: var(--space-2) var(--space-3) var(--space-5);
+  font-family: var(--font-serif);
+  font-size: 1.375rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.ra-brand__colon {
+  color: var(--accent);
+  padding-inline: 0.04em;
+}
+
+.ra-nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 1;
+}
+
+.ra-nav__link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 2.75rem;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  text-decoration: none;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+.ra-nav__link:hover {
+  background: var(--surface-sunken);
+  color: var(--text);
+}
+
+.ra-nav__link[aria-current="page"] {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-weight: 600;
+}
+
+.ra-nav__link--footer {
+  margin-top: auto;
+}
+
+.ra-icon {
+  flex: none;
+  width: 1.375rem;
+  height: 1.375rem;
+}
+
+.ra-sidebar__note {
+  padding: var(--space-4) var(--space-3) 0;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* Header */
+.ra-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  height: var(--header-h);
+  padding: 0 var(--space-6);
+  background: var(--bg);
+  border-bottom: var(--border-w) solid var(--border);
+}
+
+.ra-header__section {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+.ra-header__brand {
+  display: none;
+}
+
+/* Bottom navigation (mobile only) */
+.ra-bottomnav {
+  display: none;
+}
+
+/* Tablet: compact icon rail */
+@media (max-width: 1023.98px) {
+  :root {
+    --sidebar-w: 4.75rem;
+  }
+
+  .ra-sidebar {
+    align-items: center;
+    padding-inline: var(--space-2);
+  }
+
+  .ra-brand {
+    padding-inline: 0;
+  }
+
+  .ra-brand__rest,
+  .ra-nav__label,
+  .ra-sidebar__note {
+    display: none;
+  }
+
+  .ra-nav {
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .ra-nav__link {
+    justify-content: center;
+    padding: 0;
+    min-height: 3rem;
+  }
+
+  .ra-main {
+    padding: var(--space-5) var(--space-5) var(--space-8);
+  }
+
+  .ra-header {
+    padding-inline: var(--space-5);
+  }
+}
+
+/* Mobile: bottom navigation replaces the sidebar */
+@media (max-width: 719.98px) {
+  :root {
+    --header-h: 3.5rem;
+  }
+
+  .ra-app {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ra-sidebar {
+    display: none;
+  }
+
+  .ra-header {
+    padding-inline: var(--space-4);
+  }
+
+  .ra-header__section {
+    display: none;
+  }
+
+  .ra-header__brand {
+    display: inline-flex;
+    padding: 0;
+    font-size: 1.1875rem;
+  }
+
+  /* The tablet rail hides "ACT"; the mobile header has room for the full name. */
+  .ra-header__brand .ra-brand__rest {
+    display: inline;
+  }
+
+  .ra-main {
+    padding: var(--space-5) var(--space-4)
+      calc(var(--bottomnav-h) + var(--space-6) + env(safe-area-inset-bottom, 0px));
+  }
+
+  .ra-bottomnav {
+    position: fixed;
+    inset: auto 0 0 0;
+    z-index: 20;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    height: calc(var(--bottomnav-h) + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: var(--surface);
+    border-top: var(--border-w) solid var(--border);
+  }
+
+  .ra-bottomnav__link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    min-height: 2.75rem;
+    padding: var(--space-2) 0.15rem;
+    color: var(--text-muted);
+    font-size: 0.6875rem;
+    line-height: 1.15;
+    text-align: center;
+    text-decoration: none;
+  }
+
+  .ra-bottomnav__link[aria-current="page"] {
+    color: var(--accent-strong);
+    font-weight: 600;
+  }
+
+  .ra-bottomnav__link[aria-current="page"] .ra-icon {
+    color: var(--accent-strong);
+  }
+}
