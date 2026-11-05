@@ -2,6 +2,40 @@
 
 All notable changes per development stage. Format loosely follows Keep a Changelog.
 
+## [Stage 3] — 2026-11-05 — Database & Persistence
+
+### Added
+- **Database service (`src/db`)** — the only code that touches IndexedDB. Database `react-db` v1 with stores `episodes`, `emotions`, `actionLibrary`, `settings`. Versioned migration runner (ordered, no gaps, atomic: a failing migration rolls back and keeps the old version and data), refusal to open data from a newer app version, and handling of upgrades from another tab.
+- **Models (`src/models`)** — pure validation for episodes, custom emotions, custom actions and settings: no type coercion, unknown and managed fields rejected, all problems reported at once.
+- **Repositories** — create/get/update/delete for every store; episodes also `complete`, `reopen`, `listRecent`, `listIncomplete`, `listByEmotion`, `listByDateRange`, `count`, `getAll`. Every call returns a promise and never throws synchronously.
+- **Safety** — duplicate prevention (`add`, never `put`, checked inside the transaction); no silent overwrite; revision counter with optional `expectedRevision` (stale saves are refused); single-transaction read-modify-write so concurrent updates cannot lose each other's changes; unique names for custom emotions/actions; custom emotions in use by episodes cannot be deleted; calm, specific errors.
+- **Services** — `episode-service` (start, saveProgress, complete, reopen, getResumable, listIncomplete, listRecent, counts) so unfinished episodes are saved and resumed across sessions; `settings-service`.
+- **Storage helpers** — `database.storage.getStatus()` and `requestPersistence()` (not called yet; see ROADMAP).
+- **Settings page** — "Local storage" status row.
+- Tests: `tests/e2e-stage3.mjs`, `tests/db/` (80 in-browser database tests), `tests/static-server.mjs`.
+- Utilities: `utils/errors.js`, `utils/id.js`, `utils/time.js`, `utils/equal.js`.
+
+### Changed
+- Theme preference: the `settings` store is now the source of truth; `localStorage` remains only as a boot mirror for the pre-paint script. A choice that never reached the database is kept (pending flag) and wins at next start; a Stage 2 mirror is migrated into the database.
+- `main.js`: database opens in the background after the shell is up; storage problems produce a calm notice and the app keeps working for the session.
+- New Episode step list gained "Note what actually happened, apart from what it meant" (`event` step); action categories gained `other`.
+- `APP_VERSION` 0.3.0, `APP_STAGE` 3. `typedefs.js` rewritten to match the real models.
+
+### Fixed during the stage (found by testing)
+- An existing episode's `occurredAt` was re-checked against today's clock on every edit, so correcting a device clock backwards would have blocked editing and completing episodes. It is now only checked when set or changed.
+- `create()` threw synchronously on invalid input, which breaks `.catch()` and `Promise.all`. All repository methods now return rejected promises.
+
+### Reconciliations with the brief
+- Store `actions` (Stage 1 design) renamed `actionLibrary`; unused `meta` store dropped. Safe: no database had ever been created, so no migration was needed.
+- The brief's singular interpretation / need / impulse / chosen response are stored as lists (`interpretations`, `needs`, `impulses`, `chosenResponses` with a `category` each). A single value is a list of one.
+- Kept from Stage 1: `tags`, `overallIntensity`.
+
+### Incident
+- Earlier, interrupted Stage 3 attempts had left partial files; some (`utils/errors.js`, `utils/id.js`, `utils/date.js`) were overwritten by mistake. They were recovered from the session record and the Stage 2 archive, and dead leftovers (`models/entity.js`, `models/errors.js`, `.gitkeep` files) were deleted. The full suites pass on the restored tree.
+
+### Known limitations
+- Tested in Chrome only. Emotion ids are not yet checked against the library (Stage 4). Persistence is not requested yet (Stage 5). Record-level `schemaVersion` upgrades are not implemented; only structural migrations are.
+
 ## [Stage 2] — 2026-11-04 — Design System & Application Shell
 
 ### Added

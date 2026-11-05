@@ -8,7 +8,7 @@ All data stays on your device (IndexedDB). Core features never need the internet
 
 ## Current status
 
-**Stage 2 of 10 complete — design system and application shell.** You can navigate between Home, New Episode, My Patterns, My Growth and Settings, switch between light and dark themes, and see the responsive layouts. Episodes, the database and the emotion library are not built yet; screens that depend on them show clearly labelled placeholders. See [ROADMAP.md](ROADMAP.md).
+**Stage 3 of 10 complete — database and persistence.** The local IndexedDB foundation is built and tested: episodes (including unfinished ones that resume across sessions), custom emotions and actions, and settings, with validation, transactions, duplicate prevention and safe updates. The theme preference is now stored in it. There is no episode screen yet; the emotion library (Stage 4) and the New Episode flow (Stage 5) come next. See [ROADMAP.md](ROADMAP.md).
 
 ## Requirements
 
@@ -24,7 +24,19 @@ python3 -m http.server 8080
 # then open http://localhost:8080
 ```
 
-The theme choice is remembered on this device (Settings, or the sun/moon button in the header). No data is stored yet, and nothing is sent anywhere.
+The theme choice is remembered on this device (Settings, or the sun/moon button in the header). Settings shows whether local storage is ready. Nothing is sent anywhere.
+
+## Tests
+
+Needs Node.js 18+, Chrome and playwright-core (dev only; not an app dependency):
+
+```bash
+CHROME=/usr/bin/google-chrome PLAYWRIGHT_CORE=/path/to/node_modules SCRATCH=/tmp/react-test node tests/e2e-stage3.mjs
+```
+
+This runs the in-browser database suite (`tests/db/`), refresh and browser-restart persistence, two-tab behavior and UI integration. `tests/e2e-stage2.mjs` covers the shell. See [TESTING.md](TESTING.md).
+
+For code, use the database only through services: see ARCHITECTURE.md section 5.
 
 ## Project layout
 

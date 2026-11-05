@@ -15,10 +15,13 @@ export const EPISODE_STATUS = Object.freeze({
  * `Episode.completedSteps` use these keys, which lets a user stop at any
  * point and resume later. `outcome` and `reflection` are often filled in
  * hours after the moment itself.
+ *   trigger  = what set the feeling off
+ *   event    = what actually happened (kept apart from what it meant)
  */
 export const EPISODE_STEPS = Object.freeze([
   'emotions',
   'trigger',
+  'event',
   'interpretation',
   'need',
   'impulse',
@@ -42,7 +45,10 @@ export const EMOTION_FAMILIES = Object.freeze([
   'other',
 ]);
 
-/** Categories of suggested action. Rest, boundaries and support are first-class. */
+/**
+ * Categories of response. Rest, boundaries and support are first-class.
+ * Used both for library actions and for the category of a chosen response.
+ */
 export const ACTION_CATEGORIES = Object.freeze([
   'rest',
   'body',
@@ -52,6 +58,7 @@ export const ACTION_CATEGORIES = Object.freeze([
   'reflection',
   'practical',
   'support',
+  'other',
 ]);
 
 /** Rough effort an action asks for, so low-energy states are respected. */
@@ -63,8 +70,5 @@ export const ACTION_EFFORT = Object.freeze(['minimal', 'low', 'medium']);
  */
 export const OUTCOME_SHIFT = Object.freeze(['lighter', 'same', 'heavier', 'mixed', 'unsure']);
 
-/** Origin of a library entry. Built-in entries live in code; custom ones in the DB. */
-export const SOURCE = Object.freeze({
-  BUILT_IN: 'built_in',
-  CUSTOM: 'custom',
-});
+/** Allowed values for the theme setting. */
+export const THEME_PREFERENCES = Object.freeze(['system', 'light', 'dark']);

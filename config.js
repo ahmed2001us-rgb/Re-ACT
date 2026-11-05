@@ -1,8 +1,8 @@
 /** Application-wide constants and the route table (single source for nav, router and titles). */
 
 export const APP_NAME = 'RE:ACT';
-export const APP_VERSION = '0.2.0';
-export const APP_STAGE = 2;
+export const APP_VERSION = '0.3.0';
+export const APP_STAGE = 3;
 
 export const DEFAULT_ROUTE = 'home';
 

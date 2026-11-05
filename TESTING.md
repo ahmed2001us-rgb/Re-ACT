@@ -88,6 +88,35 @@ Sizes: 1440, 1024 (desktop); 820, 768, 720 (tablet); 719, 390, 360 (mobile).
 - **Midnight rollover:** the Home date and greeting are computed at render time and were not tested across a date change.
 - **Full-page screenshots:** the fixed bottom bar appears mid-image in stitched full-page mobile screenshots; the pinned-position check above confirms it sits at the bottom of the real viewport.
 
+## Stage 3 — Database & Persistence (2026-11-05)
+
+Environment: Chrome for Testing 153 driven by playwright-core, real IndexedDB, a local static server. Chrome only.
+Run: `tests/e2e-stage3.mjs`. Final result: **110 / 110 checks passed** (80 in-browser database tests + 30 persistence / UI / tab / unavailable-storage checks). Stage 2 regression: **174 / 174 passed**.
+
+### Brief-required tests
+| Test | What was done | Result |
+|---|---|---|
+| Create record | Episodes, custom emotions, custom actions, settings created; ids unique; defaults and timestamps set | Pass |
+| Read record | get / getOrThrow, lists, filters, 200-episode volume; returned copies cannot alter stored data | Pass |
+| Update record | Partial updates, whole-record validation, no-op keeps revision, `updatedAt` never goes backwards | Pass |
+| Delete record | Delete, delete of missing id (not-found), in-use custom emotion refused | Pass |
+| Duplicate prevention | Same id twice, simultaneous creates (one wins), duplicate custom names in different case/spacing, duplicate emotion in one episode | Pass |
+| Refresh persistence | Data written, page reloaded, data identical | Pass |
+| Incomplete-episode persistence | Draft saved mid-flow, survives refresh, a full browser restart and a second restart; resumes at the saved step | Pass |
+
+### Further coverage
+Initialisation and schema-drift check; migration v1→v2; failing migration rolls back and keeps data; newer-version database refused; upgrade from another tab; IndexedDB unavailable; error mapping; a 27-case validation table; stale save refused with `expectedRevision` (also across two real tabs); concurrent updates with no lost changes; transaction rollback; complete / reopen; settings (unknown keys rejected, reset); storage helpers; UI: real database with four stores, theme saved to it, DB beats mirror, pending recovery, legacy mirror migration, upgrade toast, storage-unavailable notice.
+
+### Mutation checks (proving the tests can fail)
+Removing the duplicate guard, disabling `expectedRevision` and disabling transaction rollback were each caught by the suite. Source was restored and the suite returned to 110 / 110.
+
+### Defects found by testing and fixed
+1. `occurredAt` re-validated against the current clock on every edit (a clock corrected backwards would block edits).
+2. `create()` threw synchronously instead of returning a rejected promise.
+
+### Not tested (and why)
+Firefox, Safari, Edge and real phones/tablets (only Chrome available); browser storage eviction and the persistence prompt (`requestPersistence` is not called yet); very large datasets beyond 200 episodes; private-browsing modes other than simulated unavailability; low-disk quota exhaustion (error mapping tested, real quota not reached).
+
 ## Template for future stages
 
 | ID | Test | Method | Result |

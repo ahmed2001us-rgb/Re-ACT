@@ -1,11 +1,10 @@
 /**
- * IndexedDB schema definition (declarative; no connection logic here).
- * The opener in Stage 3 reads this and builds object stores and indexes,
- * then runs migrations from src/db/migrations for any later version.
+ * Declarative description of the IndexedDB schema (what the database must look like
+ * after ALL migrations have run). The migrations in ./migrations create it; a test
+ * compares the real database against this file so the two can never drift apart.
  *
- * Only built-in-library *overrides and custom entries* are stored. Built-in
- * emotions/actions ship in code (src/data) so they can improve with app
- * updates without touching user data.
+ * Only the user's own records live here. Built-in emotions and actions ship in code
+ * (src/data), so app updates can improve them without touching user data.
  */
 
 export const DB_NAME = 'react-db';
@@ -13,22 +12,14 @@ export const DB_VERSION = 1;
 
 export const STORES = Object.freeze({
   EPISODES: 'episodes',
-  EMOTIONS: 'emotions',
-  ACTIONS: 'actions',
+  EMOTIONS: 'emotions', // custom emotions only
+  ACTION_LIBRARY: 'actionLibrary', // custom actions only
   SETTINGS: 'settings',
-  META: 'meta',
 });
 
 /**
- * @typedef {Object} IndexDef
- * @property {string} name
- * @property {string} keyPath
- * @property {{unique?: boolean, multiEntry?: boolean}} [options]
- *
- * @typedef {Object} StoreDef
- * @property {string} name
- * @property {string} keyPath
- * @property {IndexDef[]} indexes
+ * @typedef {{ name: string, keyPath: string | string[], options?: { unique?: boolean, multiEntry?: boolean } }} IndexDef
+ * @typedef {{ name: string, keyPath: string, indexes: IndexDef[] }} StoreDef
  */
 
 /** @type {StoreDef[]} */
@@ -37,32 +28,28 @@ export const SCHEMA = [
     name: STORES.EPISODES,
     keyPath: 'id',
     indexes: [
-      { name: 'createdAt', keyPath: 'createdAt' },
-      { name: 'updatedAt', keyPath: 'updatedAt' },
-      { name: 'status', keyPath: 'status' },
-      // multiEntry: one record is reachable under each of its emotion ids.
+      { name: 'occurredAt', keyPath: 'occurredAt' },
+      // One record is reachable under each of its emotion ids (IndexedDB cannot index inside an array of objects).
       { name: 'emotionIds', keyPath: 'emotionIds', options: { multiEntry: true } },
-      { name: 'tags', keyPath: 'tags', options: { multiEntry: true } },
+      // "Unfinished episodes, most recently touched first."
+      { name: 'status_updatedAt', keyPath: ['status', 'updatedAt'] },
     ],
   },
   {
-    name: STORES.EMOTIONS, // custom emotions only
+    name: STORES.EMOTIONS,
     keyPath: 'id',
-    indexes: [{ name: 'family', keyPath: 'family' }],
+    indexes: [
+      { name: 'family', keyPath: 'family' },
+      { name: 'labelKey', keyPath: 'labelKey', options: { unique: true } },
+    ],
   },
   {
-    name: STORES.ACTIONS, // custom actions only
+    name: STORES.ACTION_LIBRARY,
     keyPath: 'id',
-    indexes: [{ name: 'category', keyPath: 'category' }],
+    indexes: [
+      { name: 'category', keyPath: 'category' },
+      { name: 'labelKey', keyPath: 'labelKey', options: { unique: true } },
+    ],
   },
-  {
-    name: STORES.SETTINGS,
-    keyPath: 'key',
-    indexes: [],
-  },
-  {
-    name: STORES.META, // installId, schema/data versions, export history
-    keyPath: 'key',
-    indexes: [],
-  },
+  { name: STORES.SETTINGS, keyPath: 'key', indexes: [] },
 ];

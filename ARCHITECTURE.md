@@ -2,7 +2,7 @@
 
 *Feel without obeying. Understand without escaping. Act with intention.*
 
-Status: **Stage 2 complete** (design system and application shell). Sections marked *(implemented)* describe working code; everything else is a design contract filled in by the stage listed in ROADMAP.md.
+Status: **Stage 3 complete** (database and persistence). Sections marked *(implemented)* describe working code; everything else is a design contract filled in by the stage listed in ROADMAP.md.
 
 ## 1. Goals that shape the architecture
 
@@ -31,15 +31,20 @@ src/
                             empty-state, loading-state, sidebar, bottom-nav, header, shell
   pages/                    (implemented) home, new-episode, patterns, growth, settings
   styles/                   (implemented) tokens.css, base.css, layout.css, components.css, pages.css
-  db/
-    schema.js               Declarative stores + indexes (implemented)
-    migrations/             One file per schema/data version bump
-    (index.js, repositories) Added in Stage 3
-  models/
-    enums.js                Controlled vocabularies (implemented)
-    typedefs.js             JSDoc entity shapes (implemented)
-  services/                 Application logic: episodeService, settingsService, exportService, ... (Stage 3+)
-  utils/                    dom.js (safe DOM builder), date.js (implemented); more as needed
+  db/                       (implemented) the ONLY code that touches IndexedDB
+    index.js                Public database service: createDatabase(), the shared `database`, error re-exports
+    schema.js               Declarative stores + indexes (a test compares the real database to it)
+    connection.js           Open, version management, migration runner, multi-tab upgrade handling
+    idb.js                  Promise helpers: runTransaction (durable, all-or-nothing), cursor collect
+    errors.js               Maps raw browser errors to calm, specific errors
+    migrations/             001-initial-schema.js + index.js (ordered list; one file per version)
+    repositories/           episodes.js, library.js (emotions + actionLibrary), settings.js, shared.js
+  models/                   (implemented) pure rules: no database, no clock, no DOM
+    enums.js, typedefs.js   Vocabularies and entity shapes
+    validation.js, model.js Validation primitives and the model factory (unknown/managed fields rejected)
+    episode.js, library.js, setting.js   Episode, custom emotion/action, and setting rules
+  services/                 (implemented) episode-service.js (workflow: start, saveProgress, complete, resume), settings-service.js
+  utils/                    dom.js, date.js, time.js, id.js (UUIDs), equal.js, errors.js (error classes)
   data/
     emotions/               Built-in emotion library (Stage 4)
     actions/                Built-in action suggestions (Stage 4)
@@ -47,7 +52,10 @@ src/
     redirection/            Rule-based suggestion engine (Stage 6; pure functions)
   analytics/                Pure functions that derive patterns/growth from episodes (Stages 7-8)
 tests/
-  e2e-stage2.mjs            Browser checks (needs Chrome + playwright-core; not an app dependency)
+  e2e-stage2.mjs            Stage 2 UI checks (174)
+  e2e-stage3.mjs            Stage 3: runs db/db-tests.js in the browser, persistence, tabs, UI integration (110)
+  db/                       In-browser test harness and the database suite
+  static-server.mjs         Dependency-free static server used by the Stage 3 script
 ```
 
 ## 3. Layering and dependency rules
@@ -63,7 +71,7 @@ models, utils, data → nothing project-internal (utils may use models)
 
 Rules:
 
-- **Only `src/db` touches IndexedDB.** Everything else calls services/repositories. This isolates data integrity and makes migrations safe.
+- **Only `src/db` touches IndexedDB.** Everything else calls services, which call the database service. This isolates data integrity and makes migrations safe.
 - **`engine` and `analytics` are pure.** Input in, result out, no side effects. They can be tested in plain Node with no browser.
 - **Pages never query the database directly.** They call services.
 - **No circular imports.** Dependencies only point down the list above.
@@ -85,45 +93,83 @@ Rules:
 | `schemaVersion` on every record + `DB_VERSION` | Records and stores can be migrated independently. |
 | Dates as ISO-8601 UTC strings | Sortable, serialisable, export-friendly. Display converts to the user's local time zone. |
 | IDs via `crypto.randomUUID()` | No collisions, safe for export/import merging. |
-| Theme preference in `localStorage` for now *(interim)* | The theme must be applied before first paint (inline script in `index.html`), which IndexedDB cannot do synchronously. Stage 3 moves the source of truth into the `settings` store and keeps only a tiny boot flag; `app/theme.js` is the only module that changes. |
+| Theme in the `settings` store, mirrored in `localStorage` | The theme must be applied before first paint (inline script in `index.html`), which IndexedDB cannot do synchronously. The database is the source of truth; the mirror only exists for the instant first paint. |
 | Native `<dialog>` for modals | Browser-provided focus trap, Escape handling and inert background; less code and fewer accessibility bugs than a custom implementation. |
 | System font stacks (serif headings, sans body) | No font files to fetch, so no network dependency; elegant serif headings via Iowan Old Style / Palatino / Georgia. |
 | Page modules loaded with dynamic `import()` | Shell paints first; later stages add pages without growing the initial load. |
 | Relative asset paths (`./src/...`) | App works from any folder or sub-path, which matters for hosting and for the Stage 10 service-worker scope. |
 
-## 5. Database
+## 5. Database *(implemented in Stage 3)*
 
-Database name `react-db`, version `1`. Defined in `src/db/schema.js`.
+Database name `react-db`, version `1`. Declared in `src/db/schema.js`, created by `src/db/migrations/001-initial-schema.js`.
 
 | Store | Key | Indexes | Contents |
 |---|---|---|---|
-| `episodes` | `id` | `createdAt`, `updatedAt`, `status`, `emotionIds` (multiEntry), `tags` (multiEntry) | All emotional episodes, including unfinished ones |
-| `emotions` | `id` | `family` | **Custom** emotions only |
-| `actions` | `id` | `category` | **Custom** action suggestions only |
-| `settings` | `key` | none | Key/value preferences (theme, locale, ...) |
-| `meta` | `key` | none | installId, data/library versions, last export date |
+| `episodes` | `id` | `occurredAt`; `emotionIds` (multiEntry); `status_updatedAt` (`[status, updatedAt]`) | All emotional episodes, including unfinished ones |
+| `emotions` | `id` | `family`; `labelKey` (**unique**) | **Custom** emotions only |
+| `actionLibrary` | `id` | `category`; `labelKey` (**unique**) | **Custom** actions only |
+| `settings` | `key` | none | Key/value preferences; only registered keys (currently `theme`) |
 
-### Data models (full shapes in `src/models/typedefs.js`)
+### Using it
 
-**Episode** supports everything the product requires:
+Nothing outside `src/db` touches IndexedDB. Pages call a service; services call the database service:
 
-- **Multiple emotions**: `emotions[] = {emotionId, intensity 0–10}`, plus optional `overallIntensity`.
-- **Trigger**: `{text, occurredAt?}`.
-- **Interpretations**: array of `{text, plausibility?}`. Always a *possibility*; the UI says "one way to see it".
-- **Underlying needs**: `needs[]` (library keys or free text).
-- **Impulses**: `impulses[] = {text, presetId?}` — what the emotion urges, captured *before* choosing.
-- **Chosen responses**: `chosenResponses[] = {actionId|null, customText?, chosenAt}` (custom responses are equal citizens).
-- **Outcome**: `{text?, shift?, recordedAt}` with a neutral `shift` vocabulary (`lighter | same | heavier | mixed | unsure`).
-- **Reflection**: `{text?, learned?, recordedAt}`.
-- **Incomplete progress**: `status` (`in_progress | completed`), `currentStep`, `completedSteps[]`. Any step can be skipped or finished later; outcome/reflection are expected to be added after the moment passes.
+```js
+import { episodeService } from '../services/episode-service.js';
+const draft = await episodeService.start({ emotions: [{ emotionId: 'anger', intensity: 6 }] });
+await episodeService.saveProgress(draft.id, { trigger: 'A tense meeting' }, { currentStep: 'event', markStepsDone: ['emotions', 'trigger'], expectedRevision: draft.revision });
+const resume = await episodeService.getResumable();   // the unfinished episode touched most recently
+await episodeService.complete(draft.id);
+```
 
-**Emotion** — `id, label, family, description, commonNeeds[], commonImpulses[], source, schemaVersion`.
-**ActionSuggestion** — `id, label, description, category, effort, suitableFamilies[], intensityRange, source, schemaVersion`.
-**Setting** — `key, value, updatedAt`.
+`database.episodes | emotions | actionLibrary | settings` expose `create, get, getOrThrow, update, delete` (episodes add `complete, reopen, listRecent, listIncomplete, listByEmotion, listByDateRange, count, getAll`; settings are `get, getValue, set, reset, list`). **Every operation returns a promise and never throws synchronously.**
 
-### Migrations
+### Episode model (rules in `src/models/episode.js`, shape in `typedefs.js`)
 
-`DB_VERSION` increases only when stores/indexes change; structural changes live in `src/db/migrations/NNN-description.js`, each exporting `up(db, tx)`. Record-level changes bump `schemaVersion` and are upgraded lazily on read or in a one-time pass. Before any destructive migration, the app offers/creates an export.
+Covers every field in the Phase 03 brief:
+
+| Brief | Field(s) |
+|---|---|
+| Unique ID | `id` (random UUID) |
+| Date and timestamp | `occurredAt` (when it happened; defaults to now) |
+| Multiple emotions + individual intensities | `emotions: [{emotionId, intensity 0–10}]`, each emotion once; `emotionIds` derived for indexing |
+| Trigger / Actual event | `trigger`, `actualEvent` (text) |
+| Interpretation | `interpretations: [{text, plausibility?}]`, always possibilities |
+| Underlying need | `needs: [text]` |
+| Immediate impulse | `impulses: [{text, presetId?}]` |
+| Chosen response + category | `chosenResponses: [{actionId|null, text, category, chosenAt}]` |
+| Outcome / Reflection | `outcome {text?, shift?, recordedAt}`, `reflection {text?, learned?, recordedAt}` |
+| Current workflow stage | `currentStep` (one of `EPISODE_STEPS`), plus `completedSteps` |
+| Completion status | `status` (`in_progress` \| `completed`), `completedAt` |
+| Creation and update timestamps | `createdAt`, `updatedAt`, plus `revision` |
+
+The brief lists interpretation, need, impulse and response in the singular. They are stored as lists (the Stage 1 design) because they are naturally plural: several possible readings, several needs, several urges. A single value is a list of one, so nothing in the brief is lost and no later migration is needed.
+
+### Safety guarantees (each is tested; see TESTING.md)
+
+- **Validation before any write.** Types are never coerced (`"5"` is not 5); unknown fields and managed fields (`id`, `revision`, timestamps, `status`, `emotionIds`) are rejected; every problem is reported at once; a failed validation writes nothing.
+- **Nothing is silently overwritten.** `create` refuses an existing id (checked inside the write transaction, so two simultaneous creates produce one record and one `duplicate` error). `update`, `delete`, `complete` and `reopen` on a missing record are `not-found`, never a silent success or an accidental create. Custom emotion/action names are unique (case-, spacing- and Unicode-form-insensitive) via a unique index plus a check.
+- **Safe updates.** Read-modify-write happens in ONE transaction, so concurrent updates cannot lose each other's changes. Pass `expectedRevision` to refuse a change when another tab has edited the record meanwhile (`conflict`, `reason: 'stale'`). Saving identical data is a no-op (no new revision). `updatedAt` never moves backwards if the clock does.
+- **Transactions.** Writes use strict durability and resolve only after the transaction has committed. Any error inside rolls back everything in that transaction.
+- **Referential protection.** A custom emotion that episodes use cannot be deleted (`conflict`, `reason: 'in-use'`).
+- **Incomplete episodes are first-class.** A draft can be empty and saved at any step; only completing needs data (at least one emotion). Completed episodes can still be edited (outcome and reflection often come later) and reopened.
+- **Stored data is not re-judged against today's clock.** An existing `occurredAt` is only checked for "not in the future" when it is set or changed, so a corrected device clock never locks an episode.
+- **Copies, not references.** Inputs are copied in and records are copied out; mutating either never changes stored data.
+- **Calm errors.** `ValidationError` (code `validation`, `issues[{path,message}]`), `NotFoundError` (`not-found`), `DuplicateError` (`duplicate`), `ConflictError` (`conflict`, `details.reason` `stale` \| `in-use` \| ...), `StorageError` (`unavailable`, `quota`, `version-too-new`, `migration-failed`, `transaction`). Messages are safe to show to the person.
+
+### Versions and migrations
+
+`DB_VERSION` is the version of the latest migration. `src/db/migrations/index.js` lists migrations in order (versions must be 1, 2, 3... with no gaps). Each is `{version, name, up({db, transaction, oldVersion})}`; `up` runs inside the versionchange transaction and must use IndexedDB requests only. A migration that throws aborts the whole upgrade: the database stays at its old version with all data intact (tested). Opening data created by a newer app version is refused with `version-too-new` rather than risking damage. Old migrations are history: never edit one; add a new file. A test compares the migrated database with `schema.js` so they cannot drift.
+
+If another tab upgrades the database, this tab closes its connection (so the upgrade is not blocked), reports `versionchange`, and the app tells the person to reload.
+
+### Built-in libraries and settings
+
+Built-in emotions and actions ship in code (Stage 4) and are never copied into the database; the stores hold only the person's own additions. Episode `emotionIds` therefore refer to either a built-in key or a custom emotion's UUID; Stage 4's library service will validate that they exist. The `theme` setting lives in the `settings` store; `localStorage` keeps only a boot mirror (see `src/app/theme.js`): the database wins, except that a choice not yet confirmed by the database (page closed too fast) is flagged "pending" and wins on the next start.
+
+### Storage persistence
+
+`database.storage.getStatus()` and `.requestPersistence()` wrap the browser's persistent-storage API. Requesting persistence can show a browser prompt, so it is not called at start-up; Stage 5 calls it after the first episode is saved.
 
 ## 6. Emotion library (`src/data/emotions`, `src/data/actions`)
 

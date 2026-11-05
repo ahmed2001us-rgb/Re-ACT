@@ -8,8 +8,8 @@ Legend: ✅ complete · 🔄 in progress · ⬜ not started
 |---|---|---|
 | 1 | Project Initialization | ✅ Complete |
 | 2 | Design System & Application Shell | ✅ Complete |
-| 3 | Database Layer & Persistence | ⬜ Next |
-| 4 | Emotion Library & Action Library | ⬜ |
+| 3 | Database Layer & Persistence | ✅ Complete |
+| 4 | Emotion Library & Action Library | ⬜ Next |
 | 5 | New Episode Flow | ⬜ |
 | 6 | Redirection Engine | ⬜ |
 | 7 | Episode History & My Patterns | ⬜ |
@@ -25,14 +25,15 @@ Remaining: none.
 Delivered: light/dark themes (system-aware), sidebar / icon rail / bottom navigation, header with theme toggle, five routed pages, reusable cards, buttons, fields, segmented control, modal and confirm dialogs, toasts, empty and loading states, Home dashboard with labelled placeholders, responsive layouts (desktop, tablet, mobile). 174 browser checks pass (see TESTING.md).
 Carried forward: theme preference currently uses interim `localStorage` (moves to the settings store in Stage 3); the Settings "Development preview" card is removed or hidden in Stage 9.
 
-## Stage 3 — Database Layer & Persistence ⬜
-Database opener driven by `schema.js`, migration runner, repositories (episodes, emotions, actions, settings, meta), settings persistence (move the theme preference from interim `localStorage` into the settings store, keeping a tiny boot flag to avoid a theme flash), request persistent storage, integrity tests.
+## Stage 3 — Database Layer & Persistence ✅ (defined by owner)
+Delivered: IndexedDB `react-db` v1 with `episodes`, `emotions`, `actionLibrary`, `settings`; versioned migration runner; validated models; repositories with transactions, duplicate prevention, revision-checked safe updates and calm errors; a reusable database service plus episode and settings services; incomplete episodes saved and resumed across sessions; the theme preference moved into the settings store. 110 browser checks pass (see TESTING.md).
+Carried forward: the persistent-storage request is implemented but first called in Stage 5; episode emotion ids are validated against the library in Stage 4.
 
 ## Stage 4 — Emotion Library & Action Library ⬜
-Built-in emotions (grouped by family, neutral descriptions), needs and impulse presets, built-in action suggestions, libraryService merging built-in and custom entries, custom emotion/action creation.
+Built-in emotions (grouped by family, neutral descriptions), needs and impulse presets, built-in action suggestions, libraryService merging built-in entries with the custom ones already stored by Stage 3 (create/edit/delete UI), and validation that an episode's emotion ids exist.
 
 ## Stage 5 — New Episode Flow ⬜
-Step-by-step flow: emotions and intensity, trigger, interpretations (as possibilities), needs, impulses, response, outcome, reflection. Autosave of unfinished episodes, resume, skip, edit later.
+Step-by-step flow: emotions and intensity, trigger, interpretations (as possibilities), needs, impulses, response, outcome, reflection. Built on `episodeService` (Stage 3): autosave of unfinished episodes, resume, skip, edit later. Requests persistent storage after the first save.
 
 ## Stage 6 — Redirection Engine ⬜
 Rule-based suggestions from emotion family, intensity, impulses and needs; always includes rest, boundary and support options; plain-language reasons; integrated into the response step as optional.
