@@ -1,0 +1,95 @@
+/* Page-specific layout. */
+
+/* Home */
+.ra-hero {
+  display: flex;
+  flex-direction: row; /* .ra-card is a column; the hero lays out text and CTA side by side */
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-5);
+  padding: clamp(1.5rem, 1rem + 2.5vw, 3rem);
+}
+
+.ra-hero__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.ra-hero__date {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+.ra-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  gap: var(--space-5);
+}
+
+.ra-reminder {
+  margin: 0;
+  padding: var(--space-6) var(--space-4) 0;
+  text-align: center;
+  border-top: var(--border-w) solid var(--border);
+}
+
+.ra-reminder__text {
+  max-width: 34rem;
+  margin: 0 auto;
+  font-family: var(--font-serif);
+  font-size: var(--text-lg);
+  font-style: italic;
+  line-height: 1.5;
+  color: var(--text);
+  text-wrap: balance;
+}
+
+/* Lists */
+.ra-steps {
+  display: grid;
+  gap: var(--space-2);
+  padding-left: var(--space-5);
+  font-size: var(--text-sm);
+  text-align: left;
+}
+
+/* Settings / component preview */
+.ra-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.ra-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.ra-preview {
+  padding: var(--space-4);
+  background: var(--surface-sunken);
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.ra-definition {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-2) var(--space-5);
+  margin: 0;
+  font-size: var(--text-sm);
+}
+.ra-definition dt { color: var(--text-muted); }
+.ra-definition dd { margin: 0; }
+
+@media (max-width: 719.98px) {
+  .ra-hero .ra-btn { width: 100%; }
+}
+
+.ra-page--form { max-width: 46rem; }
+.ra-card--recent .ra-card__body { gap: var(--space-3); }

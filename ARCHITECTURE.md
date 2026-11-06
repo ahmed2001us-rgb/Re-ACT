@@ -2,7 +2,7 @@
 
 *Feel without obeying. Understand without escaping. Act with intention.*
 
-Status: **Stage 3 complete** (database and persistence). Sections marked *(implemented)* describe working code; everything else is a design contract filled in by the stage listed in ROADMAP.md.
+Status: **Stage 4 complete** (emotional episode engine). Sections marked *(implemented)* describe working code; everything else is a design contract filled in by the stage listed in ROADMAP.md.
 
 ## 1. Goals that shape the architecture
 
@@ -27,9 +27,11 @@ src/
     store.js                Tiny observable store for UI state
     theme.js                Theme manager: system | light | dark
     router.js               Hash router, lazy page loading, focus and document-title management
-  components/               (implemented) icons, button, card, input (field + segmented), modal, toast,
-                            empty-state, loading-state, sidebar, bottom-nav, header, shell
-  pages/                    (implemented) home, new-episode, patterns, growth, settings
+  components/               (implemented) icons, button, card, input (field, select, segmented), modal, toast,
+                            empty-state, loading-state, sidebar, bottom-nav, header, shell,
+                            emotion-picker, episode-form, episode-item (Stage 4 feature components)
+  pages/                    (implemented) home, new-episode (also edit / continue draft), episodes, episode (view),
+                            patterns, growth, settings
   styles/                   (implemented) tokens.css, base.css, layout.css, components.css, pages.css
   db/                       (implemented) the ONLY code that touches IndexedDB
     index.js                Public database service: createDatabase(), the shared `database`, error re-exports
@@ -43,18 +45,22 @@ src/
     enums.js, typedefs.js   Vocabularies and entity shapes
     validation.js, model.js Validation primitives and the model factory (unknown/managed fields rejected)
     episode.js, library.js, setting.js   Episode, custom emotion/action, and setting rules
-  services/                 (implemented) episode-service.js (workflow: start, saveProgress, complete, resume), settings-service.js
+    episode-form.js         Pure translation between an episode record and the single-page form (Stage 4)
+  services/                 (implemented) episode-service.js (drafts, finish, edit, delete, resume, counts),
+                            library-service.js (built-in + custom emotions, search), settings-service.js
   utils/                    dom.js, date.js, time.js, id.js (UUIDs), equal.js, errors.js (error classes)
   data/
-    emotions/               Built-in emotion library (Stage 4)
-    actions/                Built-in action suggestions (Stage 4)
+    emotions.js             (implemented) the 19 built-in emotions with neutral descriptions and search aliases
+    actions/                Built-in action suggestions (Stage 6)
   engine/
     redirection/            Rule-based suggestion engine (Stage 6; pure functions)
   analytics/                Pure functions that derive patterns/growth from episodes (Stages 7-8)
 tests/
   e2e-stage2.mjs            Stage 2 UI checks (174)
-  e2e-stage3.mjs            Stage 3: runs db/db-tests.js in the browser, persistence, tabs, UI integration (110)
+  e2e-stage3.mjs            Stage 3: runs db/db-tests.js in the browser, persistence, tabs, UI integration
+  e2e-stage4.mjs            Stage 4: runs app/app-tests.js, then UI flows, restart, two tabs, unavailable storage, responsive
   db/                       In-browser test harness and the database suite
+  app/                      In-browser suite for the library, episode service and form mapping
   static-server.mjs         Dependency-free static server used by the Stage 3 script
 ```
 
@@ -66,6 +72,7 @@ services → db, engine, analytics, data, utils
 engine, analytics → data, models, utils   (pure; no DB, no DOM)
 db → models, utils
 components, pages → utils, other components, and the UI-level modules app/config and app/theme
+feature components (episode-form, emotion-picker) → services too (they are page-sized composites)
 models, utils, data → nothing project-internal (utils may use models)
 ```
 
@@ -75,6 +82,7 @@ Rules:
 - **`engine` and `analytics` are pure.** Input in, result out, no side effects. They can be tested in plain Node with no browser.
 - **Pages never query the database directly.** They call services.
 - **No circular imports.** Dependencies only point down the list above.
+- **Feature components may call services.** `episode-form` and `emotion-picker` are page-sized composites, so they use `episodeService` / `libraryService` themselves. They still never import `src/db`. Small shared components (button, card, field...) stay free of services.
 - **One acknowledged exception:** `app/router.js` imports two presentational components (loading and empty states) to render its own fallback screens. Nothing else in `app/` imports components.
 
 ## 4. Key technical decisions
@@ -132,7 +140,7 @@ Covers every field in the Phase 03 brief:
 |---|---|
 | Unique ID | `id` (random UUID) |
 | Date and timestamp | `occurredAt` (when it happened; defaults to now) |
-| Multiple emotions + individual intensities | `emotions: [{emotionId, intensity 0–10}]`, each emotion once; `emotionIds` derived for indexing |
+| Multiple emotions + individual intensities | `emotions: [{emotionId, intensity 1–10}]`, each emotion once; `emotionIds` derived for indexing |
 | Trigger / Actual event | `trigger`, `actualEvent` (text) |
 | Interpretation | `interpretations: [{text, plausibility?}]`, always possibilities |
 | Underlying need | `needs: [text]` |
@@ -165,15 +173,43 @@ If another tab upgrades the database, this tab closes its connection (so the upg
 
 ### Built-in libraries and settings
 
-Built-in emotions and actions ship in code (Stage 4) and are never copied into the database; the stores hold only the person's own additions. Episode `emotionIds` therefore refer to either a built-in key or a custom emotion's UUID; Stage 4's library service will validate that they exist. The `theme` setting lives in the `settings` store; `localStorage` keeps only a boot mirror (see `src/app/theme.js`): the database wins, except that a choice not yet confirmed by the database (page closed too fast) is flagged "pending" and wins on the next start.
+Built-in emotions ship in code (`src/data/emotions.js`) and are never copied into the database; the stores hold only the person's own additions. Episode `emotionIds` therefore refer to either a built-in key or a custom emotion's UUID, and `episodeService` refuses to store an id that is in neither. The `theme` setting lives in the `settings` store; `localStorage` keeps only a boot mirror (see `src/app/theme.js`): the database wins, except that a choice not yet confirmed by the database (page closed too fast) is flagged "pending" and wins on the next start.
 
 ### Storage persistence
 
-`database.storage.getStatus()` and `.requestPersistence()` wrap the browser's persistent-storage API. Requesting persistence can show a browser prompt, so it is not called at start-up; Stage 5 calls it after the first episode is saved.
+`database.storage.getStatus()` and `.requestPersistence()` wrap the browser's persistent-storage API. Requesting persistence can show a browser prompt, so it is not called at start-up: `episodeService` asks once per session, after the first episode has been saved, and a refusal or error never affects saving.
 
-## 6. Emotion library (`src/data/emotions`, `src/data/actions`)
+## 5a. Emotional episode engine *(implemented in Stage 4)*
 
-Static modules exporting frozen arrays. A `libraryService` (Stage 4) merges built-in entries with custom DB entries. Descriptions are neutral and non-diagnostic. Version number stored in `meta` lets future updates add entries safely.
+**Emotion library** (`src/data/emotions.js`, `src/services/library-service.js`). Nineteen built-in emotions (Anger, Anxiety, Fear, Sadness, Disappointment, Frustration, Envy, Jealousy, Guilt, Shame, Loneliness, Boredom, Overwhelm, Excitement, Joy, Peace, Gratitude, Motivation, Numbness), each with a neutral, tentative description, a descriptive family and search aliases. Built-in ids are stable keys stored inside episodes: never rename or remove one. `libraryService` merges them with the person's own emotions (the `emotions` store): `listEmotions`, `getEmotionMap`, `createEmotion`, `deleteEmotion`, `assertEmotionsExist`, and the pure `searchEmotions` (case-, accent- and spacing-insensitive; matches name, aliases and description; the best name match comes first). A custom name cannot repeat a built-in or another custom one. A custom emotion used by any episode cannot be deleted.
+
+**Episode service** (`src/services/episode-service.js`):
+
+| Call | Meaning |
+|---|---|
+| `saveDraft({id?, fields, expectedRevision?})` | Create (no id) or update an unfinished episode. Identical content changes nothing (no new revision), so autosave never churns the record. |
+| `finish({id?, fields, expectedRevision?})` | Save and complete (needs one emotion). For an existing draft, the last edit and the completion are ONE transaction. A new episode is created first; if completion is refused the words are kept as a draft. |
+| `saveChanges(id, fields, {expectedRevision})` | Edit an episode without changing whether it is complete. |
+| `remove(id, {expectedRevision})`, `get`, `listRecent({limit, offset, status})`, `getResumable()`, `counts()` | Delete (a missing or stale episode is an error, never silent), read, list, "continue where you left off", counts. |
+
+All of them refuse unknown emotion ids. `start` / `saveProgress` (Stage 3) remain for the guided workflow.
+
+**Single-page form** (`components/episode-form.js`, `components/emotion-picker.js`, `models/episode-form.js`). The form holds plain text for each box; `formToFields` / `episodeToForm` translate to and from the episode. Each box edits the FIRST item of its list (interpretation, need, impulse, chosen response); any further items, a plausibility rating, a preset id and the "learned" note on a reflection are preserved untouched, so nothing the form cannot show is lost. `recordedAt` / `chosenAt` stamps are preserved while content is unchanged.
+
+- Intensity is a whole number 1–10 per emotion (default 5). Removing an emotion and choosing it again starts at 5 again.
+- **Drafts autosave.** A new or unfinished episode saves about a second after typing stops, when the page is left, and when the tab is hidden. After the first save the address becomes `#/edit-episode?id=...`, so a refresh reopens the draft. The status line says what happened ("Draft saved at 13:24", "Not saved. ...").
+- **Completed episodes are not autosaved.** Changes apply only on "Save changes"; leaving with unsaved changes asks first (Cancel) or triggers the browser's own warning (closing the tab).
+- **No silent overwrite.** Every save carries the revision it was based on. If another tab changed the episode, this page stops saving, keeps the typed text on screen and says so in plain words.
+- Saves run one at a time, in order, so two quick saves can never create two records.
+- Validation problems come back as issues and are shown next to the box they belong to.
+
+**Pages.** `#/new-episode` (a blank form, with a gentle offer to continue an existing draft), `#/edit-episode?id=` (continue a draft or edit a completed episode), `#/episode?id=` (read, with Edit / Delete), `#/episodes[?status=completed|in_progress]` (all episodes, 20 at a time, status filter). Home shows the five most recent episodes, the counts (total, completed, drafts), and a card to continue the newest draft. Settings lists the person's own emotions with Delete (refused with an explanation while in use).
+
+**Known behaviours.** A page shows what was in the database when it opened: changes made in another tab appear after navigating or reloading. Deleting asks for confirmation and cannot be undone.
+
+## 6. Libraries (`src/data`)
+
+Static modules exporting frozen arrays. Emotions are implemented (see 5a). Built-in action suggestions arrive with the redirection engine (Stage 6) and use the same pattern: code-defined entries, stable ids, plus the person's own additions in the `actionLibrary` store. Descriptions are neutral and non-diagnostic. New built-in entries can be added by an app update without touching stored data.
 
 ## 7. Redirection engine (`src/engine/redirection`)
 
@@ -194,14 +230,14 @@ Pure functions over arrays of episodes: emotion frequency, common triggers, impu
 
 ## 9. Application shell, routing, state *(implemented in Stage 2)*
 
-- **Routes** (`app/config.js`): `#/home`, `#/new-episode`, `#/patterns`, `#/growth`, `#/settings`. An empty hash redirects to `#/home`; unknown routes show a clear "page does not exist" state.
+- **Routes** (`app/config.js`): navigation items `#/home`, `#/new-episode`, `#/patterns`, `#/growth`, `#/settings`, plus hidden routes (`hidden: true`, no navigation item) `#/edit-episode`, `#/episodes`, `#/episode`. Hidden routes take their data from the query string (`#/episode?id=...`); pages read it with `getRouteParams()`, and `replaceRoute()` updates the address without a navigation. A page is only re-opened when the address changes. An empty hash redirects to `#/home`; unknown routes show a clear "page does not exist" state.
 - **Router** (`app/router.js`): pages export `render(ctx)` and an optional `destroy()`. On each navigation it tears down the previous page, shows a skeleton loader only if loading takes longer than 150 ms, renders the new page, updates `document.title`, scrolls to top and moves focus to the page's `<h1>` (marked `data-page-title`). Focus is not moved on the very first render. A guard token ignores out-of-order async results. Errors render a recoverable "could not be opened" state.
 - **Store** (`app/store.js`): UI state only (`route`, `sectionTitle`, `theme`, `resolvedTheme`).
 - **Shell** (`components/shell.js`): skip link, sidebar, header, `<main id="main">`, bottom nav, toast region.
 - **Responsive modes** (CSS only, same markup): >= 1024 px full sidebar; 720-1023 px compact icon rail; < 720 px bottom navigation with five items. Content is capped at `--content-max` (64rem).
 - **Design tokens** (`styles/tokens.css`): colors, type scale, spacing, radii, layout sizes and motion are CSS custom properties. The dark theme only overrides tokens under `[data-theme="dark"]`; no component CSS changes per theme.
 - **Components**: `createButton` (button or link), `createIconButton`, `createCard`, `createField`, `createSegmented`, `openModal` / `openConfirm`, `showToast`, `createEmptyState` (with a visible placeholder tag), `createLoadingState` (spinner or skeleton).
-- **Placeholders**: any content a later stage will replace is labelled in the UI with a dashed "Placeholder - arrives in Stage N" tag, so nothing appears finished that is not.
+- **Placeholders**: any content a later stage will replace is labelled in the UI with a dashed "Placeholder - arrives in Stage N" tag, so nothing appears finished that is not. (Home no longer has any; My Patterns and My Growth still do.)
 - **Settings page** includes a "Development preview" card that exercises every shared component. It is hidden or removed in Stage 9.
 
 ## 10. Offline and PWA (Stage 10)
@@ -237,4 +273,4 @@ Pure functions over arrays of episodes: emotion frequency, common triggers, impu
 
 ## 13. How the architecture supports all ten stages
 
-Each stage adds files behind existing boundaries: Stage 2 fills `components/pages/styles/app`; 3 fills `db`; 4 fills `data` + libraryService; 5 builds `new-episode` on episodeService; 6 fills `engine`; 7–8 fill `analytics` + pages; 9 extends `settings` + exportService; 10 adds `sw.js` + manifest. No stage requires moving or rewriting a previous layer.
+Each stage adds files behind existing boundaries: Stage 2 fills `components/pages/styles/app`; 3 fills `db`; 4 fills `data/emotions.js`, libraryService and the single-page episode form; 5 replaces the form's body with the guided workflow on the same services; 6 fills `engine` and the action library; 7–8 fill `analytics` + pages; 9 extends `settings` + exportService; 10 adds `sw.js` + manifest. No stage requires moving or rewriting a previous layer.

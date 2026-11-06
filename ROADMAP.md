@@ -1,6 +1,6 @@
 # RE:ACT — Roadmap
 
-> Stage 1 and Stage 2 are defined by the project owner. **Stages 3–10 are a proposal** made during Stage 1 and should be confirmed or corrected before Stage 3 begins.
+> Stages 1–4 were defined by the project owner (Phase 02, 03 and 04 requests). Stage 5 is named by the owner (the six-stage guided workflow) but its scope has not been given yet. **Stages 6–10 are still my own proposal** and should be confirmed or corrected before they begin.
 
 Legend: ✅ complete · 🔄 in progress · ⬜ not started
 
@@ -9,9 +9,9 @@ Legend: ✅ complete · 🔄 in progress · ⬜ not started
 | 1 | Project Initialization | ✅ Complete |
 | 2 | Design System & Application Shell | ✅ Complete |
 | 3 | Database Layer & Persistence | ✅ Complete |
-| 4 | Emotion Library & Action Library | ⬜ Next |
-| 5 | New Episode Flow | ⬜ |
-| 6 | Redirection Engine | ⬜ |
+| 4 | Emotional Episode Engine | ✅ Complete |
+| 5 | Guided Six-Stage Workflow | ⬜ Next (scope to be given by the owner) |
+| 6 | Action Library & Redirection Engine | ⬜ |
 | 7 | Episode History & My Patterns | ⬜ |
 | 8 | My Growth | ⬜ |
 | 9 | Settings, Data Export/Import & Privacy | ⬜ |
@@ -27,16 +27,17 @@ Carried forward: theme preference currently uses interim `localStorage` (moves t
 
 ## Stage 3 — Database Layer & Persistence ✅ (defined by owner)
 Delivered: IndexedDB `react-db` v1 with `episodes`, `emotions`, `actionLibrary`, `settings`; versioned migration runner; validated models; repositories with transactions, duplicate prevention, revision-checked safe updates and calm errors; a reusable database service plus episode and settings services; incomplete episodes saved and resumed across sessions; the theme preference moved into the settings store. 110 browser checks pass (see TESTING.md).
-Carried forward: the persistent-storage request is implemented but first called in Stage 5; episode emotion ids are validated against the library in Stage 4.
+Carried forward (both resolved in Stage 4): emotion ids are now validated against the library, and the persistent-storage request is made once after the first save.
 
-## Stage 4 — Emotion Library & Action Library ⬜
-Built-in emotions (grouped by family, neutral descriptions), needs and impulse presets, built-in action suggestions, libraryService merging built-in entries with the custom ones already stored by Stage 3 (create/edit/delete UI), and validation that an episode's emotion ids exist.
+## Stage 4 — Emotional Episode Engine ✅ (defined by owner)
+Delivered: searchable library of the 19 requested emotions with neutral descriptions; several emotions per episode, each with its own 1–10 intensity; custom emotions (add in the form, remove in Settings); a single-page episode form (emotion, intensity, trigger, event, interpretation, need, impulse, chosen response with category, outcome, reflection); create, view, edit, delete; save draft (autosave plus a Save draft button) and resume; Home shows real recent episodes, counts and a continue-draft card; an All episodes page with a status filter. Every operation persists through IndexedDB. 206 browser checks pass (see TESTING.md).
+Carried forward: none.
 
-## Stage 5 — New Episode Flow ⬜
-Step-by-step flow: emotions and intensity, trigger, interpretations (as possibilities), needs, impulses, response, outcome, reflection. Built on `episodeService` (Stage 3): autosave of unfinished episodes, resume, skip, edit later. Requests persistent storage after the first save.
+## Stage 5 — Guided Six-Stage Workflow ⬜ (named by owner, scope not yet given)
+The owner has said the guided workflow follows this phase. Open question for the owner: the workflow is described as six stages, while the stored `EPISODE_STEPS` vocabulary (Stage 1) has nine (emotions, trigger, event, interpretation, need, impulse, response, outcome, reflection). The six stages need to be defined, and mapped onto (or replace) the nine steps, before work begins. It will reuse `episodeService` and the library; `currentStep` / `completedSteps` are already stored on every episode and untouched by the Stage 4 form.
 
-## Stage 6 — Redirection Engine ⬜
-Rule-based suggestions from emotion family, intensity, impulses and needs; always includes rest, boundary and support options; plain-language reasons; integrated into the response step as optional.
+## Stage 6 — Action Library & Redirection Engine ⬜ (proposal)
+Built-in action suggestions, custom actions (the store and model already exist), and the rule-based redirection engine: suggestions from emotion family, intensity, impulses and needs; rest, boundary and support options always present; plain-language reasons; always optional.
 
 ## Stage 7 — Episode History & My Patterns ⬜
 Recent episodes on Home, full list with filters (emotion, date, status), episode detail/edit/delete, pattern views (frequent emotions, triggers, impulses vs responses).

@@ -8,7 +8,7 @@ All data stays on your device (IndexedDB). Core features never need the internet
 
 ## Current status
 
-**Stage 3 of 10 complete — database and persistence.** The local IndexedDB foundation is built and tested: episodes (including unfinished ones that resume across sessions), custom emotions and actions, and settings, with validation, transactions, duplicate prevention and safe updates. The theme preference is now stored in it. There is no episode screen yet; the emotion library (Stage 4) and the New Episode flow (Stage 5) come next. See [ROADMAP.md](ROADMAP.md).
+**Stage 4 of 10 complete — emotional episode engine.** You can record an episode on one page (the emotions you feel, each with its own intensity from 1 to 10, what set it off, what happened, how you saw it, what you might need, the urge you felt, what you chose, what followed, and a reflection), save it unfinished, and come back to it later. Episodes can be viewed, edited and deleted, and Home shows your recent episodes and counts. The step-by-step guided workflow is the next stage and is not built yet. See [ROADMAP.md](ROADMAP.md).
 
 ## Requirements
 
@@ -24,17 +24,26 @@ python3 -m http.server 8080
 # then open http://localhost:8080
 ```
 
-The theme choice is remembered on this device (Settings, or the sun/moon button in the header). Settings shows whether local storage is ready. Nothing is sent anywhere.
+The theme choice and everything you write are kept in this browser, on this device. Settings shows whether local storage is ready. Nothing is sent anywhere.
+
+## Using it
+
+- **New Episode:** pick one or more emotions (search by name or a similar word, or add your own), set an intensity for each, and fill in as much as you like. Drafts save themselves; press *Save episode* when you want to mark it finished.
+- **Continue later:** Home and New Episode offer to continue your newest draft; *All episodes* lists everything, with a Completed / Drafts filter.
+- **Edit or delete:** open an episode, then *Edit* or *Delete* (deleting asks first and cannot be undone).
+- **Your own emotions:** added from the emotion picker, removed in Settings (an emotion that episodes still use cannot be removed).
 
 ## Tests
 
 Needs Node.js 18+, Chrome and playwright-core (dev only; not an app dependency):
 
 ```bash
-CHROME=/usr/bin/google-chrome PLAYWRIGHT_CORE=/path/to/node_modules SCRATCH=/tmp/react-test node tests/e2e-stage3.mjs
+CHROME=/usr/bin/google-chrome PLAYWRIGHT_CORE=/path/to/node_modules SCRATCH=/tmp/react-test node tests/e2e-stage4.mjs   # Stage 4: library, episode flows, drafts, restart, two tabs, responsive
+CHROME=... PLAYWRIGHT_CORE=... SCRATCH=... node tests/e2e-stage3.mjs                                                       # Stage 3: database and persistence
+CHROME=... PLAYWRIGHT_CORE=... BASE_URL=http://localhost:8765 node tests/e2e-stage2.mjs                                     # Stage 2: shell (needs a static server on that port)
 ```
 
-This runs the in-browser database suite (`tests/db/`), refresh and browser-restart persistence, two-tab behavior and UI integration. `tests/e2e-stage2.mjs` covers the shell. See [TESTING.md](TESTING.md).
+The Stage 4 and Stage 3 scripts start their own server and run the in-browser suites in `tests/app/` and `tests/db/`. See [TESTING.md](TESTING.md).
 
 For code, use the database only through services: see ARCHITECTURE.md section 5.
 

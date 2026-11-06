@@ -2,6 +2,42 @@
 
 All notable changes per development stage. Format loosely follows Keep a Changelog.
 
+## [Stage 4] — 2026-11-06 — Emotional Episode Engine
+
+### Added
+- **Emotion library** (`src/data/emotions.js`): the 19 requested emotions, each with a neutral, tentative description, a family and search aliases. `libraryService` merges them with the person's own emotions; search is case-, accent- and spacing-insensitive and matches names, similar words ("worried", "let down") and descriptions, best name match first.
+- **Custom emotions:** added from the emotion picker (name, optional description, optional group); names cannot repeat a built-in or another custom emotion; listed with Delete in Settings (refused with an explanation while episodes use one).
+- **Single-page episode form** (`components/episode-form.js`, `emotion-picker.js`, `models/episode-form.js`): emotions with an individual 1–10 intensity each, date and time, trigger, event, interpretation, need, impulse, chosen response with category, outcome with a neutral shift, reflection. Character counters appear near each limit.
+- **Drafts:** autosave (after a pause, on leaving the page, when the tab is hidden) plus *Save draft*; after the first save the address becomes `#/edit-episode?id=...` so a refresh reopens the draft; Home and New Episode offer to continue the newest draft.
+- **Episode management:** view (`#/episode?id=`), edit (completed episodes change only on *Save changes*; Cancel asks before discarding), delete (asks first), and an *All episodes* page (20 at a time, Completed / Drafts filter).
+- **Home:** the placeholders are replaced with real data: the five most recent episodes, counts (total, completed, drafts) and a continue-draft card, with calm empty and error states.
+- `episodeService`: `saveDraft`, `finish` (draft save and completion in one transaction), `saveChanges`; all refuse unknown emotion ids. `database.episodes.complete(id, {fields})`.
+- Persistent storage is requested once, after the first save (`requestPersistence` was built in Stage 3 but never called).
+- Hidden routes and query-string parameters (`getRouteParams`, `replaceRoute`); `createSelect` field; character counts and `attrs` on `createField`.
+- Tests: `tests/e2e-stage4.mjs` (206 checks) and `tests/app/app-tests.js` (30 in-browser tests).
+
+### Changed
+- **Emotion intensity is 1–10** (Stage 3 allowed 0–10). Safe: the Stage 3 UI could not create episodes, so no stored data used 0; no migration needed. `overallIntensity` follows the same range.
+- Home: the "Emotional development" placeholder card became "Your episodes" (counts). The growth summary belongs to My Growth (later stage).
+- `New Episode` is now the real form; the informational step list and placeholder were removed.
+- Stage 2 test expectations updated for the real Home (placeholders gone; Home reached through the sidebar).
+- App version 0.4.0, stage 4.
+
+### Fixed during the stage (found by testing)
+- Elements with a component display rule (for example buttons) ignored the `hidden` attribute, so an empty episode list still showed a "Show more" button. A global `[hidden] { display: none !important; }` rule fixes this for every component.
+- While searching, matches were not ordered by relevance (an alias match could sit before the exact name). Matches now come first, best name match first.
+
+### Spec notes and decisions
+- The six-stage guided workflow is **not** built (as instructed). `currentStep` / `completedSteps` are stored but untouched by this form. The stored step vocabulary has nine steps; the owner needs to define the six stages (see ROADMAP).
+- The form edits the first item of each list field (interpretation, need, impulse, chosen response) and preserves any further items and details it cannot show.
+- A page shows the database as it was when it opened; changes from another tab appear after navigating or reloading.
+
+### Incident
+- Earlier interrupted sessions had already built most of this stage. In this session I started rewriting without noticing and overwrote nine files (emotions data, library and episode services, enums, date, router, config, shell, database tests). I rebuilt the earlier versions by replaying their recorded commands on the Stage 3 archive, confirmed every file identical to what existed before, and only then continued. No work was lost.
+
+### Known limitations
+- Tested in Chrome only; no Firefox, Safari or real phones. In-app navigation away from an edited completed episode is not guarded (closing the tab is). Removing an emotion and choosing it again restarts its intensity at 5. Only the first item of each list field can be edited in this form (the guided workflow will handle several).
+
 ## [Stage 3] — 2026-11-05 — Database & Persistence
 
 ### Added
